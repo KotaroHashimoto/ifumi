@@ -15,6 +15,8 @@ input int End_Time_H = 18;
 input double Entry_Lot = 0.1;
 input int TakeProfit = 20;
 input int StopLoss = 20;
+input double MA21_Entry_TH = 10;
+input bool Pivot_Exit = True;
 
 enum Size {
   M1 = PERIOD_M1,
@@ -39,6 +41,9 @@ double ma7_1;
 
 double sl;
 double tp;
+double th;
+
+bool belowPivot;
 
 string symbol;
 
@@ -57,6 +62,9 @@ int OnInit()
   
   sl = 10.0 * Point * StopLoss;
   tp = 10.0 * Point * TakeProfit;
+  th = 10.0 * Point * MA21_Entry_TH;
+  
+  belowPivot = (Bid + Ask) / 2.0 < (iOpen(Symbol(), PERIOD_D1, 1) + iClose(Symbol(), PERIOD_D1, 1)) / 2.0;
   
   symbol = Symbol();
 
@@ -69,6 +77,47 @@ int OnInit()
 void OnDeinit(const int reason)
 {
   //---   
+}
+
+bool pivotCrossed() {
+
+  if(!Pivot_Exit) {
+    return True;
+  }
+
+  bool isBelow = (Bid + Ask) / 2.0 < (iOpen(Symbol(), PERIOD_D1, 1) + iClose(Symbol(), PERIOD_D1, 1)) / 2.0;
+
+  if(belowPivot == isBelow) {
+    return False;
+  }
+  else {
+    belowPivot = isBelow;
+    return True;
+  }
+}
+
+int shortTrend() {
+
+  if(ma7_1 < iClose(Symbol(), Candle_Stick_Size, 1)) {
+    return OP_BUY;
+  }
+  else if(ma7_1 > iClose(Symbol(), Candle_Stick_Size, 1)) {
+    return OP_SELL;
+  }
+  
+  return -1;
+}
+
+int midTrend() {
+
+  if(ma21_2 + th < ma21_1) {
+    return OP_BUY;
+  }
+  else if(ma21_2 - th > ma21_1){
+    return OP_SELL;
+  }
+  
+  return -1;
 }
 
 int majorTrend() {
@@ -93,6 +142,16 @@ int crossCondition() {
 }
 
 
+double sltp(double price, double delta) {
+
+  if(delta == 0.0) {
+    return 0;
+  }
+  else {
+    return NormalizeDouble(price + delta, Digits);
+  }
+}
+
 //+------------------------------------------------------------------+
 //| Expert tick function                                             |
 //+------------------------------------------------------------------+
@@ -112,11 +171,25 @@ void OnTick()
   for(int i = 0; i < OrdersTotal(); i++) {
     if(OrderSelect(i, SELECT_BY_POS)) {
       if(OrderMagicNumber() == Magic_Number) {
-        if(OrderType() == OP_BUY && crossCondition() == OP_SELL) {
-          bool closed = OrderClose(OrderTicket(), OrderLots(), Bid, 0);
+        if(OrderType() == OP_BUY ) {
+          if(crossCondition() == OP_SELL || pivotCrossed()) {
+            if(OrderClose(OrderTicket(), OrderLots(), NormalizeDouble(Bid, Digits), 0)) {
+              return;
+            }
+          }          
+          else if(OrderStopLoss() < Ask - sl && sl != 0.0) {
+            bool mod = OrderModify(OrderTicket(), OrderOpenPrice(), NormalizeDouble(Ask - sl, Digits), OrderTakeProfit(), 0);
+          }
         }
-        if(OrderType() == OP_SELL && crossCondition() == OP_BUY) {
-          bool closed = OrderClose(OrderTicket(), OrderLots(), Ask, 0);
+        if(OrderType() == OP_SELL) {
+          if(crossCondition() == OP_BUY || pivotCrossed()) {
+            if(OrderClose(OrderTicket(), OrderLots(), NormalizeDouble(Ask, Digits), 0)) {
+              return;
+            }
+          }
+          else if(OrderStopLoss() > Bid + sl && sl != 0.0) {
+            bool mod = OrderModify(OrderTicket(), OrderOpenPrice(), NormalizeDouble(Bid + sl, Digits), OrderTakeProfit(), 0);
+          }
         }
       }
     }
@@ -127,11 +200,11 @@ void OnTick()
   }
 
   if(OrdersTotal() == 0) {
-    if(crossCondition() == OP_BUY && majorTrend() == OP_BUY) {
-      int ticket = OrderSend(symbol, OP_BUY, Entry_Lot, Ask, 0, Ask - sl, Ask + tp, NULL, Magic_Number);
+    if(crossCondition() == OP_BUY && majorTrend() == OP_BUY && shortTrend() == OP_BUY && (midTrend() == OP_BUY || th == 0)) {
+      int ticket = OrderSend(symbol, OP_BUY, Entry_Lot, NormalizeDouble(Ask, Digits), 0, sltp(Ask, -1.0 * sl), sltp(Ask, tp), NULL, Magic_Number);
     }
-    else if(crossCondition() == OP_SELL && majorTrend() == OP_SELL) {
-      int ticket = OrderSend(symbol, OP_SELL, Entry_Lot, Bid, 0, Bid + sl, Bid - tp, NULL, Magic_Number);
+    else if(crossCondition() == OP_SELL && majorTrend() == OP_SELL && shortTrend() == OP_SELL && (midTrend() == OP_SELL || th == 0)) {
+      int ticket = OrderSend(symbol, OP_SELL, Entry_Lot, NormalizeDouble(Bid, Digits), 0, sltp(Bid, sl), sltp(Bid, -1.0 * tp), NULL, Magic_Number);
     }
   }
 }
