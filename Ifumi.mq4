@@ -13,9 +13,9 @@ input int Magic_Number = 1;
 input int Start_Time_H = 10;
 input int End_Time_H = 18;
 input double Entry_Lot = 0.1;
-input int TakeProfit = 20;
-input int StopLoss = 20;
-input double MA21_Entry_TH = 10;
+input int TakeProfit = 0;
+input int StopLoss = 10;
+input double MA21_Entry_TH = 1;
 input bool Pivot_Exit = True;
 
 enum Size {
