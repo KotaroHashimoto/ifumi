@@ -64,7 +64,7 @@ int OnInit()
   tp = 10.0 * Point * TakeProfit;
   th = 10.0 * Point * MA21_Entry_TH;
   
-  belowPivot = (Bid + Ask) / 2.0 < (iOpen(Symbol(), PERIOD_D1, 1) + iClose(Symbol(), PERIOD_D1, 1)) / 2.0;
+  belowPivot = (Bid + Ask) / 2.0 < (iHigh(Symbol(), PERIOD_D1, 1) + iLow(Symbol(), PERIOD_D1, 1)) / 2.0;
   
   symbol = Symbol();
 
@@ -85,7 +85,7 @@ bool pivotCrossed() {
     return True;
   }
 
-  bool isBelow = (Bid + Ask) / 2.0 < (iOpen(Symbol(), PERIOD_D1, 1) + iClose(Symbol(), PERIOD_D1, 1)) / 2.0;
+  bool isBelow = (Bid + Ask) / 2.0 < (iHigh(Symbol(), PERIOD_D1, 1) + iLow(Symbol(), PERIOD_D1, 1)) / 2.0;
 
   if(belowPivot == isBelow) {
     return False;
