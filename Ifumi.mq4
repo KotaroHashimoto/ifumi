@@ -82,7 +82,7 @@ void OnDeinit(const int reason)
 bool pivotCrossed() {
 
   if(!Pivot_Exit) {
-    return True;
+    return False;
   }
 
   bool isBelow = (Bid + Ask) / 2.0 < (iHigh(Symbol(), PERIOD_D1, 1) + iLow(Symbol(), PERIOD_D1, 1)) / 2.0;
